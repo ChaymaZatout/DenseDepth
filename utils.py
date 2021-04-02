@@ -1,17 +1,19 @@
 import numpy as np
 from PIL import Image
+import torch
 
 def DepthNorm(x, maxDepth):
     return maxDepth / x
 
-def predict(model, images, minDepth=10, maxDepth=1000, batch_size=2):
-    # Support multiple RGBs, one RGB image, even grayscale 
-    if len(images.shape) < 3: images = np.stack((images,images,images), axis=2)
-    if len(images.shape) < 4: images = images.reshape((1, images.shape[0], images.shape[1], images.shape[2]))
-    # Compute predictions
-    predictions = model.predict(images, batch_size=batch_size)
-    # Put in expected range
-    return np.clip(DepthNorm(predictions, maxDepth=maxDepth), minDepth, maxDepth) / maxDepth
+
+def predict(model, image, minDepth=10, maxDepth=1000):
+    with torch.no_grad():
+        pytorch_input = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)
+        # Compute predictions
+        predictions = model(pytorch_input)
+        # Put in expected range
+    return (np.clip(DepthNorm(predictions.numpy(), maxDepth=maxDepth), minDepth, maxDepth) / maxDepth)[0][0]
+
 
 def scale_up(scale, images):
     from skimage.transform import resize
@@ -80,18 +82,6 @@ def save_images(filename, outputs, inputs=None, gt=None, is_colormap=True, is_re
     montage =  display_images(outputs, inputs, is_colormap, is_rescale)
     im = Image.fromarray(np.uint8(montage*255))
     im.save(filename)
-
-def load_test_data(test_data_zip_file='nyu_test.zip'):
-    print('Loading test data...', end='')
-    import numpy as np
-    from data import extract_zip
-    data = extract_zip(test_data_zip_file)
-    from io import BytesIO
-    rgb = np.load(BytesIO(data['eigen_test_rgb.npy']))
-    depth = np.load(BytesIO(data['eigen_test_depth.npy']))
-    crop = np.load(BytesIO(data['eigen_test_crop.npy']))
-    print('Test data loaded.\n')
-    return {'rgb':rgb, 'depth':depth, 'crop':crop}
 
 def compute_errors(gt, pred):
     thresh = np.maximum((gt / pred), (pred / gt))
