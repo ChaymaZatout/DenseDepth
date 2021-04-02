@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import torch
+from scipy import ndimage
 
 
 def DepthNorm(x, maxDepth):
@@ -23,6 +24,35 @@ def to_pcd(depth, cx_d, fx_d, cy_d, fy_d):
     y = -((np.array([[_ for _ in range(depth.shape[1])] for _ in
                      range(depth.shape[0])]) - cy_d) * depth / fy_d)
     return np.column_stack((x.flatten(), y.flatten(), depth.flatten()))
+
+
+def edges(d):
+    dx = ndimage.sobel(d, 0)  # horizontal derivative
+    dy = ndimage.sobel(d, 1)  # vertical derivative
+    return np.abs(dx) + np.abs(dy)
+
+
+def worldCoords(width, height):
+    import math
+    hfov_degrees, vfov_degrees = 57, 43
+    hFov = math.radians(hfov_degrees)
+    vFov = math.radians(vfov_degrees)
+    cx, cy = width / 2, height / 2
+    fx = width / (2 * math.tan(hFov / 2))
+    fy = height / (2 * math.tan(vFov / 2))
+    xx, yy = np.tile(range(width), height), np.repeat(range(height), width)
+    xx = (xx - cx) / fx
+    yy = (yy - cy) / fy
+    return xx, yy
+
+
+def posFromDepth(depth, xx, yy):
+    length = depth.shape[0] * depth.shape[1]
+
+    depth[edges(depth) > 0.3] = 1e6  # Hide depth edges
+    z = depth.reshape(length)
+
+    return np.dstack((xx * z, yy * z, z)).reshape((length, 3))
 
 
 def scale_up(scale, images):
