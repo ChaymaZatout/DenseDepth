@@ -49,7 +49,7 @@ def worldCoords(width, height):
 def posFromDepth(depth, xx, yy):
     length = depth.shape[0] * depth.shape[1]
 
-    depth[edges(depth) > 0.3] = 1e6  # Hide depth edges
+    # depth[edges(depth) > 0.3] = 1e6  # Hide depth edges
     z = depth.reshape(length)
 
     return np.dstack((xx * z, yy * z, z)).reshape((length, 3))
