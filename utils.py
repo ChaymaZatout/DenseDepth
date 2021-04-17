@@ -55,16 +55,12 @@ def posFromDepth(depth, xx, yy):
     return np.dstack((xx * z, yy * z, z)).reshape((length, 3))
 
 
-def scale_up(scale, images):
+def scale_up(scale, img):
     from skimage.transform import resize
-    scaled = []
+    output_shape = (scale * img.shape[0], scale * img.shape[1])
+    return resize(img, output_shape, order=1, preserve_range=True, mode='reflect', anti_aliasing=True)
 
-    for i in range(len(images)):
-        img = images[i]
-        output_shape = (scale * img.shape[0], scale * img.shape[1])
-        scaled.append(resize(img, output_shape, order=1, preserve_range=True, mode='reflect', anti_aliasing=True))
 
-    return np.stack(scaled)
 
 
 def load_images(image_files):
