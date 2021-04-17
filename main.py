@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from model import PTModel
 import time
-from utils import predict, worldCoords, posFromDepth
+from utils import predict, worldCoords, posFromDepth, scale_up
 
 # Image processing
 from PIL import Image
@@ -26,56 +26,43 @@ if __name__ == '__main__':
     file = "_in/sample_2.jpg"
     img = np.asarray(Image.open(file), dtype='float32')
     rgb_height, rgb_width = img.shape[:2]
-    xx, yy = worldCoords(width=rgb_width // 2, height=rgb_height // 2)
+    xx, yy = worldCoords(width=rgb_width, height=rgb_height)
     inputRGB = np.clip(img / 255, 0, 1)
 
     # Compute results
     start = time.time()
-    output = predict(pytorch_model, inputRGB) # Here they did (1000 / predict()) / 1000 in demo file, absurd i know
+    output = predict(pytorch_model, inputRGB)
     print(f"Predicted in {time.time() - start} s.")
    
     # save image:
-    im = Image.fromarray(np.uint8(output * 255))
-    im.save("_out/sample_2_depth.png")
+    # im = Image.fromarray(np.uint8(output * 255))
+    # im.save("_out/sample_2_depth.png")
 
     # Compute PCD and visualize:
-    #output = resize(np.load('demo_depth.npy'), (240,320))# original demo
+    output = scale_up(2, output) * 10.0
     pcd = posFromDepth(output.copy(), xx, yy)
-    pcd = pcd.astype('float32')
 
-    # SHOW intensity based pcl, not working well, need to do the dividing thing in the predict line, 
-    # and still, the resulting pcl is not that correct
-    '''
+    # Open3d pcd:
     pcl = o3d.geometry.PointCloud()
     pcl.points = o3d.utility.Vector3dVector(pcd)
+    pcl.colors = o3d.utility.Vector3dVector(inputRGB.reshape(rgb_width * rgb_height, 3))
     # Flip it, otherwise the pointcloud will be upside down
-    pcl.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-    o3d.visualization.draw_geometries([pcl])
-    '''
+    # pcl.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 
-    # SHOW colored pcd with open3d, works fine if you resize the rgb to the same shape as depth frame
-    # AND no need to divide in the 'predict' line above
-
-    #inputRGB = Image.open('_in/sample_2.jpg').resize((320, 240)) # resizing in PIL
-    #inputRGB.save('_in/sample3.jpg')
-    inputRGB = o3d.io.read_image('_in/sample3.jpg')
-    output = o3d.io.read_image('_out/sample_2_depth.png')
-
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
-        inputRGB, output, convert_rgb_to_intensity=False)
-    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
-        rgbd_image,
-        o3d.camera.PinholeCameraIntrinsic(
-            o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
-    # Flip it, otherwise the pointcloud will be upside down
-    pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+    # Point cloud creation from rgbd image:
+    # rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
+    #     inputRGB, output, convert_rgb_to_intensity=False)
+    # pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
+    #     rgbd_image,
+    #     o3d.camera.PinholeCameraIntrinsic(
+    #         o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
 
     # Visualize normal mode
-    #o3d.visualization.draw_geometries([pcd])
-
+    o3d.visualization.draw_geometries([pcl])
     # Visualize with rotation and save frames to make a gif later
-    visualizer.custom_draw_geometry_with_rotation(pcd)
+    # visualizer.custom_draw_geometry_with_rotation(pcl)
 
     # display:
     # plt.imshow(output)
     # plt.show()
+
