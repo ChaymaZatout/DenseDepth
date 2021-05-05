@@ -1,11 +1,16 @@
 
+'''
+ This script is used to generate custom visualization using Open3D, also saves RGB and Depth frames
+ to the data folder for GIFs creation.
+'''
+
 import matplotlib.pyplot as plt
 import open3d as o3d
 import numpy as np
 import os
 
 
-mainPath = '_in/'
+mainPath = 'data/_in/'
 
 def custom_draw_geometry_with_rotation(pcd):
 

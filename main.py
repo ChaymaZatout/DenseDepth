@@ -1,3 +1,8 @@
+'''
+ This script as well as the visualizer and some additions to the Utils script are the only differences
+ between the orignal repo and this one.
+'''
+
 # Computing
 import numpy as np
 import torch
@@ -8,6 +13,8 @@ from utils import predict, worldCoords, posFromDepth, scale_up
 # Image processing
 from PIL import Image
 from skimage.transform import resize
+from skimage.filters import median
+from skimage.morphology import disk
 
 # Visualization
 from matplotlib import pyplot as plt
@@ -18,12 +25,12 @@ import visualizer
 if __name__ == '__main__':
     # load model:
     pytorch_model = PTModel().float()
-    checkpoint = torch.load("nyu.pth.tar", map_location=torch.device('cpu'))
+    checkpoint = torch.load("data/nyu.pth.tar", map_location=torch.device('cpu'))
     pytorch_model.load_state_dict(checkpoint['state_dict'])
     pytorch_model.eval()
 
-    # Input images:
-    file = "_in/sample_2.jpg"
+    # Load input imgs, not adapted for a video yet:
+    file = "data/_in/classroom__rgb_00283.jpg"
     img = np.asarray(Image.open(file), dtype='float32')
     rgb_height, rgb_width = img.shape[:2]
     xx, yy = worldCoords(width=rgb_width, height=rgb_height)
@@ -36,31 +43,32 @@ if __name__ == '__main__':
    
     # save image:
     # im = Image.fromarray(np.uint8(output * 255))
-    # im.save("_out/sample_2_depth.png")
+    # im.save("data/_out/sample_2_depth.png")
 
     # Compute PCD and visualize:
     output = scale_up(2, output) * 10.0
     pcd = posFromDepth(output.copy(), xx, yy)
-
+    
     # Open3d pcd:
     pcl = o3d.geometry.PointCloud()
     pcl.points = o3d.utility.Vector3dVector(pcd)
     pcl.colors = o3d.utility.Vector3dVector(inputRGB.reshape(rgb_width * rgb_height, 3))
     # Flip it, otherwise the pointcloud will be upside down
-    # pcl.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+    pcl.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 
-    # Point cloud creation from rgbd image:
-    # rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
-    #     inputRGB, output, convert_rgb_to_intensity=False)
-    # pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
-    #     rgbd_image,
-    #     o3d.camera.PinholeCameraIntrinsic(
-    #         o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
-
+    # Compute point cloud from rgbd image:
+    '''
+    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
+         inputRGB, output, convert_rgb_to_intensity=False)
+    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(
+         rgbd_image,
+         o3d.camera.PinholeCameraIntrinsic(
+             o3d.camera.PinholeCameraIntrinsicParameters.PrimeSenseDefault))
+    '''
     # Visualize normal mode
     o3d.visualization.draw_geometries([pcl])
     # Visualize with rotation and save frames to make a gif later
-    # visualizer.custom_draw_geometry_with_rotation(pcl)
+    #visualizer.custom_draw_geometry_with_rotation(pcl)
 
     # display:
     # plt.imshow(output)

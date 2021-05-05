@@ -1,3 +1,8 @@
+'''
+ Most of the functions present here came in the original repo, we only took what's needed and not 
+ the enitre script
+'''
+
 import numpy as np
 from PIL import Image
 import torch
@@ -17,6 +22,8 @@ def predict(model, image, minDepth=10, maxDepth=1000):
     return (np.clip(DepthNorm(predictions.numpy(), maxDepth=maxDepth), minDepth, maxDepth) / maxDepth)[0][0]
 
 
+# This our version of the point cloud computation function, the rest of the functions came in 
+# the original repo
 def to_pcd(depth, cx_d, fx_d, cy_d, fy_d):
     mat = np.array([[_ for _ in range(depth.shape[0])] for _ in
                     range(depth.shape[1])])
